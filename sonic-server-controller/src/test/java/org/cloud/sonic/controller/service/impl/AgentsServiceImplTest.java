@@ -54,8 +54,10 @@ public class AgentsServiceImplTest {
                 .setHighTempTime(5000)
                 .setRobotType(RobotType.DingTalk)
                 .setHost("192.168.1.1")
+                .setWsScheme("ws")
                 .setName("Agent Name")
                 .setPort(7777)
+                .setServicePort(80)
                 .setSecretKey("xxxxx")
                 .setSystemType("windows")
                 .setVersion("v2.x");

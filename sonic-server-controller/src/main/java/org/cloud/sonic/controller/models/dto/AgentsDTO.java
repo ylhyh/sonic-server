@@ -40,9 +40,17 @@ public class AgentsDTO implements Serializable, TypeConverter<AgentsDTO, Agents>
     @Schema(description = "Agent端所在host", example = "192.168.1.1")
     String host;
 
+    @NotBlank
+    @Schema(description = "Web控制台连接Agent使用的WebSocket协议", example = "ws")
+    String wsScheme;
+
     @NotNull
     @Schema(description = "Agent端暴露web端口", example = "7777")
     int port;
+
+    @NotNull
+    @Schema(description = "Agent端注册到Web端的WebSocket服务端口", example = "80")
+    int servicePort;
 
     @Schema(description = "Agent端状态", example = "ONLINE")
     int status;

@@ -4,16 +4,23 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.cloud.sonic</groupId>
-    <artifactId>sonic-server</artifactId>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.0.3</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
+
+    <groupId>org.cloud.sonic</groupId>
+    <artifactId>sonic-server</artifactId>
     <version>2.0.0</version>
     <packaging>pom</packaging>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <current.version>${SONIC_VERSION}</current.version>
+    </properties>
 
     <modules>
         <module>sonic-server-common</module>
@@ -22,12 +29,6 @@
         <module>sonic-server-gateway</module>
         <module>sonic-server-eureka</module>
     </modules>
-
-    <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <current.version>SONIC_VERSION</current.version>
-    </properties>
 
     <dependencyManagement>
         <dependencies>

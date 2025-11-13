@@ -42,12 +42,20 @@ public class Agents implements Serializable, TypeConverter<Agents, AgentsDTO> {
     private String host;
 
     @TableField
+    @Column(value = "ws_scheme", isNull = false, comment = "连接agent使用的WS协议(ws/wss)", defaultValue = "ws")
+    private String wsScheme;
+
+    @TableField
     @Column(isNull = false, comment = "agent name")
     private String name;
 
     @TableField
     @Column(isNull = false, comment = "agent的端口")
     private Integer port;
+
+    @TableField
+    @Column(value = "service_port", isNull = false, comment = "agent注册到Web端的WebSocket服务端口")
+    private Integer servicePort;
 
     @TableField
     @Column(value = "secret_key", comment = "agent的密钥", defaultValue = "")

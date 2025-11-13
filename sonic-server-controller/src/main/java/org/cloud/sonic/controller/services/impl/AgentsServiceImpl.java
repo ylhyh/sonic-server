@@ -58,9 +58,11 @@ public class AgentsServiceImpl extends SonicServiceImpl<AgentsMapper, Agents> im
             Agents agents = new Agents();
             agents.setName(name);
             agents.setHost("unknown");
+            agents.setWsScheme("unknown");
             agents.setStatus(AgentStatus.OFFLINE);
             agents.setVersion("unknown");
             agents.setPort(0);
+            agents.setServicePort(0);
             agents.setSystemType("unknown");
             agents.setHighTemp(highTemp);
             agents.setHighTempTime(highTempTime);
@@ -109,7 +111,9 @@ public class AgentsServiceImpl extends SonicServiceImpl<AgentsMapper, Agents> im
                 Agents oldAgent = findById(jsonObject.getInteger("agentId"));
                 oldAgent.setStatus(AgentStatus.ONLINE);
                 oldAgent.setHost(jsonObject.getString("host"));
+                oldAgent.setWsScheme(jsonObject.getString("wsScheme"));
                 oldAgent.setPort(jsonObject.getInteger("port"));
+                oldAgent.setServicePort(jsonObject.getInteger("servicePort"));
                 oldAgent.setVersion(jsonObject.getString("version"));
                 oldAgent.setSystemType(jsonObject.getString("systemType"));
                 if (jsonObject.getInteger("hasHub") != null) {
