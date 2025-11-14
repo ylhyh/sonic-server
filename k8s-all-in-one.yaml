@@ -1,0 +1,518 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: autoops
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonic-config
+  namespace: autoops
+data:
+  server_scheme: https
+  server_host: sonic.example.com
+  server_port: "443"
+  secret_key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  expire_day: "14"
+  eureka_host: sonic-server-eureka
+  eureka_port: "8761"
+  eureka_username: sonic
+  eureka_password: sonic
+  mysql_host: mysql-cluster-01.example.com
+  mysql_port: "3306"
+  mysql_database: sonic
+  mysql_username: sonic_client
+  mysql_password: xxxxxxxxxxxx
+  permission_enable: "true"
+  permission_super_admin: sonic
+  register_enable: "true"
+  normal_user_enable: "true"
+  sonic_ldap_enable: "false"
+  spring_ldap_url: ldap://172.16.0.1
+  spring_ldap_base: DC=example,DC=com
+  spring_ldap_username: auth_ldap@example.com
+  spring_ldap_password: xxxxxxxxxxxxx
+  sonic_ldap_user_base_dn: ""
+  sonic_ldap_object_class: user
+  sonic_ldap_user_id: sAMAccountName
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonic-server-eureka
+  namespace: autoops
+  labels:
+    app: sonic-server-eureka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonic-server-eureka
+  template:
+    metadata:
+      labels:
+        app: sonic-server-eureka
+    spec:
+      containers:
+      - name: sonic-server-eureka
+        image: sonicorg/sonic-server-eureka:v2.7.3
+        env:
+        - name: SONIC_EUREKA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_host
+        - name: SONIC_EUREKA_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_port
+        - name: SONIC_EUREKA_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_username
+        - name: SONIC_EUREKA_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_password
+        ports:
+        - name: eureka
+          containerPort: 8761
+          protocol: TCP
+        volumeMounts:
+        - name: sonic-log-store
+          mountPath: /logs
+        resources:
+          requests:
+            memory: "50Mi"
+            cpu: "50m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: sonic-log-store
+        nfs:
+          path: /autoops/log/sonic
+          server: nfs-cluster-01.example.com
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonic-server-eureka
+  namespace: autoops
+  labels:
+    app: sonic-server-eureka
+spec:
+  type: ClusterIP
+  ports:
+  - name: sonic-server-eureka
+    port: 8761
+    targetPort: 8761
+    protocol: TCP
+  selector:
+    app: sonic-server-eureka
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonic-server-gateway
+  namespace: autoops
+  labels:
+    app: sonic-server-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonic-server-gateway
+  template:
+    metadata:
+      labels:
+        app: sonic-server-gateway
+    spec:
+      containers:
+      - name: sonic-server-gateway
+        image: sonicorg/sonic-server-gateway:v2.7.3
+        env:
+        - name: SONIC_EUREKA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_host
+        - name: SONIC_EUREKA_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_port
+        - name: SONIC_EUREKA_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_username
+        - name: SONIC_EUREKA_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_password
+        - name: SECRET_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: secret_key
+        - name: EXPIRE_DAY
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: expire_day
+        ports:
+        - name: api-gateway
+          containerPort: 3000
+          protocol: TCP
+        volumeMounts:
+        - name: sonic-log-store
+          mountPath: /logs
+        resources:
+          requests:
+            memory: "50Mi"
+            cpu: "50m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: sonic-log-store
+        nfs:
+          path: /autoops/log/sonic
+          server: nfs-cluster-01.example.com
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonic-server-gateway
+  namespace: autoops
+  labels:
+    app: sonic-server-gateway
+spec:
+  type: ClusterIP
+  ports:
+  - name: sonic-server-gateway
+    port: 3000
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    app: sonic-server-gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonic-server-controller
+  namespace: autoops
+  labels:
+    app: sonic-server-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonic-server-controller
+  template:
+    metadata:
+      labels:
+        app: sonic-server-controller
+    spec:
+      containers:
+      - name: sonic-server-controller
+        image: sonicorg/sonic-server-controller:v2.7.3
+        env:
+        - name: SONIC_SERVER_SCHEME
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: server_scheme
+        - name: SONIC_SERVER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: server_host
+        - name: SONIC_SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: server_port
+        - name: SECRET_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: secret_key
+        - name: EXPIRE_DAY
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: expire_day
+        - name: SONIC_EUREKA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_host
+        - name: SONIC_EUREKA_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_port
+        - name: SONIC_EUREKA_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_username
+        - name: SONIC_EUREKA_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_password
+        - name: MYSQL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: mysql_host
+        - name: MYSQL_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: mysql_port
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: mysql_database
+        - name: MYSQL_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: mysql_username
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: mysql_password
+        - name: PERMISSION_ENABLE
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: permission_enable
+        - name: PERMISSION_SUPER_ADMIN
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: permission_super_admin
+        - name: REGISTER_ENABLE
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: register_enable
+        - name: NORMAL_USER_ENABLE
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: normal_user_enable
+        - name: LDAP_USER_ENABLE
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: sonic_ldap_enable
+        - name: LDAP_URL
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: spring_ldap_url
+        - name: LDAP_BASE
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: spring_ldap_base
+        - name: LDAP_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: spring_ldap_username
+        - name: LDAP_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: spring_ldap_password
+        - name: LDAP_BASE_DN
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: sonic_ldap_user_base_dn
+        - name: LDAP_OBJECT_CLASS
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: sonic_ldap_object_class
+        - name: LDAP_USER_ID
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: sonic_ldap_user_id
+        volumeMounts:
+        - name: sonic-log-store
+          mountPath: /logs
+        resources:
+          requests:
+            memory: "50Mi"
+            cpu: "50m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: sonic-log-store
+        nfs:
+          path: /autoops/log/sonic
+          server: nfs-cluster-01.example.com
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonic-server-folder
+  namespace: autoops
+  labels:
+    app: sonic-server-folder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonic-server-folder
+  template:
+    metadata:
+      labels:
+        app: sonic-server-folder
+    spec:
+      containers:
+      - name: sonic-server-folder
+        image: sonicorg/sonic-server-folder:v2.7.3
+        env:
+        - name: SONIC_EUREKA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_host
+        - name: SONIC_EUREKA_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_port
+        - name: SONIC_EUREKA_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_username
+        - name: SONIC_EUREKA_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: eureka_password
+        - name: SONIC_SERVER_SCHEME
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: server_scheme
+        - name: SONIC_SERVER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: server_host
+        - name: SONIC_SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: server_port
+        - name: SECRET_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: secret_key
+        - name: EXPIRE_DAY
+          valueFrom:
+            configMapKeyRef:
+              name: sonic-config
+              key: expire_day
+        volumeMounts:
+        - name: sonic-data-store-keep
+          mountPath: /keepFiles
+        - name: sonic-data-store-image
+          mountPath: /imageFiles
+        - name: sonic-data-store-record
+          mountPath: /recordFiles
+        - name: sonic-data-store-package
+          mountPath: /packageFiles
+        - name: sonic-log-store
+          mountPath: /logs
+        resources:
+          requests:
+            memory: "50Mi"
+            cpu: "50m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: sonic-data-store-keep
+        nfs:
+          path: /autoops/data/sonic/keepFiles
+          server: nfs-cluster-01.example.com
+      - name: sonic-data-store-image
+        nfs:
+          path: /autoops/data/sonic/imageFiles
+          server: nfs-cluster-01.example.com
+      - name: sonic-data-store-record
+        nfs:
+          path: /autoops/data/sonic/recordFiles
+          server: nfs-cluster-01.example.com
+      - name: sonic-data-store-package
+        nfs:
+          path: /autoops/data/sonic/packageFiles
+          server: nfs-cluster-01.example.com
+      - name: sonic-log-store
+        nfs:
+          path: /autoops/log/sonic
+          server: nfs-cluster-01.example.com
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonic-client-web
+  namespace: autoops
+  labels:
+    app: sonic-client-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonic-client-web
+  template:
+    metadata:
+      labels:
+        app: sonic-client-web
+    spec:
+      containers:
+      - name: sonic-client-web
+        image: sonicorg/sonic-client-web:v2.7.3
+        ports:
+        - name: web
+          containerPort: 80
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonic-client-web
+  namespace: autoops
+  labels:
+    app: sonic-client-web
+spec:
+  type: ClusterIP
+  ports:
+  - name: sonic-client-web
+    port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: sonic-client-web
