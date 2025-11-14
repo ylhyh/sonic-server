@@ -319,10 +319,13 @@ public class DevicesServiceImpl extends SonicServiceImpl<DevicesMapper, Devices>
 
     @Override
     public void deviceStatus(JSONObject jsonMsg) {
-        Devices devices = findByUdId(jsonMsg.getString("udId"));
+        String udId = jsonMsg.getString("udId");
+        if (udId == null || udId.isBlank()) return;
+
+        Devices devices = findByUdId(udId);
         if (devices == null) {
             devices = new Devices();
-            devices.setUdId(jsonMsg.getString("udId"));
+            devices.setUdId(udId);
             devices.setNickName("");
             devices.setUser("");
             devices.setPassword("");
