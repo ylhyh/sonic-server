@@ -147,6 +147,8 @@ public class UsersServiceImpl extends SonicServiceImpl<UsersMapper, Users> imple
         AndFilter filter = new AndFilter();
         filter.and(new EqualsFilter("objectclass", objectClass)).and(new EqualsFilter(userId, username));
         try {
+            //Fixed "Unprocessed Continuation Reference(s)" when using default 389 port
+            ldapTemplate.setIgnorePartialResultException(true);
             boolean authResult = ldapTemplate.authenticate(userBaseDN, filter.toString(), password);
             if (create && authResult) {
                 save(buildUser(userInfo));
